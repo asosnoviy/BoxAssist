@@ -9,10 +9,10 @@
 #include <sstream>
 #include <numeric>
 
-std::vector<uint16_t> isSubsetSum(std::vector<uint16_t> set, int n, int sum);
-std::vector<uint16_t> readFromBytes(std::vector<char> source);
-std::vector<char> writeToBytes(const std::vector<uint16_t> &calcResult);
-std::string intTostring(const std::vector<uint16_t> &calcResult);
+std::vector<uint32_t> isSubsetSum(std::vector<uint32_t> set, int n, int sum);
+std::vector<uint32_t> readFromBytes(std::vector<char> source);
+std::vector<char> writeToBytes(const std::vector<uint32_t> &calcResult);
+std::string intTostring(const std::vector<uint32_t> &calcResult);
 
 #define MATRIX(type, m, n) std::vector<std::vector<type>>(m, std::vector<type>(n))
 #ifdef __linux__
@@ -28,8 +28,8 @@ std::string BoxAssist::extensionName() {
 }
 
 union binLayout {
-    uint16_t intValue;
-    char bytePart[2];
+    uint32_t intValue;
+    char bytePart[4];
 };
 
 BoxAssist::BoxAssist() {
@@ -50,7 +50,7 @@ variant_t BoxAssist::calculate(const variant_t &input, const variant_t &sum) {
 
         auto maxCount = std::reduce(extractedData.begin(), extractedData.end());
         if (sumAsInt >= maxCount) {
-            std::vector<uint16_t> all(extractedData.size());
+            std::vector<uint32_t> all(extractedData.size());
             std::iota(begin(all), end(all), 0);
             return intTostring(all);
         };
@@ -64,9 +64,9 @@ variant_t BoxAssist::calculate(const variant_t &input, const variant_t &sum) {
 
 }
 
-std::vector<char> writeToBytes(const std::vector<uint16_t> &calcResult) {
+std::vector<char> writeToBytes(const std::vector<uint32_t> &calcResult) {
     std::vector<char> result;
-    result.reserve(calcResult.size() * sizeof(uint16_t));
+    result.reserve(calcResult.size() * sizeof(uint32_t));
 
     for (unsigned short i : calcResult) {
         binLayout parts = {0};
@@ -79,13 +79,13 @@ std::vector<char> writeToBytes(const std::vector<uint16_t> &calcResult) {
     return result;
 }
 
-std::string intTostring(const std::vector<uint16_t> &calcResult) {
+std::string intTostring(const std::vector<uint32_t> &calcResult) {
     std::stringstream ss;
     for(size_t i = 0; i < calcResult.size(); ++i)
     {
         if(i != 0)
             ss << ",";
-        ss << calcResult[i];
+        ss << std::to_string(calcResult[i]);
     }
     std::string s = ss.str();
 
@@ -95,21 +95,21 @@ std::string intTostring(const std::vector<uint16_t> &calcResult) {
 
 variant_t BoxAssist::test(const variant_t &input) {
     auto read = readFromBytes(std::get<std::vector<char>>(input));
-    return writeToBytes(read);
+    return intTostring(read);
 }
 
 // Returns size of maximum sized subset
 // if there is a subset of set[] with sun
 // equal to given sum. It returns -1 if there
 // is no subset with given sum.
-std::vector<uint16_t> isSubsetSum(std::vector<uint16_t> set, int n, int sum)
+std::vector<uint32_t> isSubsetSum(std::vector<uint32_t> set, int n, int sum)
 {
     // The value of subset[i][j] will be true if there
     // is a subset of set[0..j-1] with sum equal to i
 
     auto subset = MATRIX(bool, sum + 1, n + 1);
     auto count = MATRIX(int, sum + 1, n + 1);
-    auto val = MATRIX(std::vector<uint16_t>, sum + 1, n + 1);
+    auto val = MATRIX(std::vector<uint32_t>, sum + 1, n + 1);
 
     // If sum is 0, then answer is true
     for (int i = 0; i <= n; i++)
@@ -165,16 +165,17 @@ std::vector<uint16_t> isSubsetSum(std::vector<uint16_t> set, int n, int sum)
     return val[index][n];
 }
 
-std::vector<uint16_t> readFromBytes(std::vector<char> source) {
-    std::vector<uint16_t> dest;
-    dest.reserve(source.size() / sizeof(uint16_t));
-    for (size_t i = 0; i < source.size() / sizeof(uint16_t); ++i) {
-        auto hi = static_cast<u_char>(source[2 * i]);
-        auto lo = static_cast<u_char>(source[2 * i + 1]);
+std::vector<uint32_t> readFromBytes(std::vector<char> source) {
+
+    std::vector<uint32_t> dest;
+    dest.reserve(source.size() / sizeof(uint32_t));
+    for (size_t i = 0; i < source.size() / sizeof(uint32_t); ++i) {
 
         binLayout reader{};
-        reader.bytePart[0] = hi;
-        reader.bytePart[1] = lo;
+        reader.bytePart[0] = static_cast<u_char>(source[4 * i]);
+        reader.bytePart[1] = static_cast<u_char>(source[4 * i + 1]);
+        reader.bytePart[2] = static_cast<u_char>(source[4 * i + 2]);
+        reader.bytePart[3] = static_cast<u_char>(source[4 * i + 3]);
 
         dest.push_back(reader.intValue);
     }
